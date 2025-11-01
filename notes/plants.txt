@@ -1,0 +1,22 @@
+
+| #  | Botanical name        | Common name                 | Key Benefits                                                                                                       | Local relevance                                                                                       |
+| -- | --------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| 1  | Azadirachta indica    | Neem / Kikar-Neem           | Antibacterial, anti-inflammatory, skin-health, helps regulate blood sugar & metabolic syndrome. ([PubMed][1])      | Mentioned in studies from Bathinda region as locally used medicinal tree. ([The Tribune][2])          |
+| 2  | Withania somnifera    | Ashwagandha / Winter Cherry | Adaptogen (helps with stress), anti-inflammatory, immune-support, neuroprotective potential. ([PMC][3])            | Listed among medicinal plants of the Malwa region for local therapeutic practices. ([The Tribune][2]) |
+| 3  | Curcuma longa         | Turmeric                    | Anti-oxidant, anti-inflammatory, supports digestion and liver health. Widely used. ([The Tribune][2])              | Identified in the region’s folk medicine plant lists. ([cuestionesdefisioterapia.com][4])             |
+| 4  | Barleria prionitis    | Vajradanti                  | Traditional uses: skin, boils, rheumatism, toothache. ([Wikipedia][5])                                             | Included in the herbal garden list at PAU and cultivation in Punjab. ([pau.cyberframe.in][6])         |
+| 5  | Abutilon indicum      | Indian Mallow               | Diuretic, laxative, anti-inflammatory; used traditionally for ulcers, bladder issues. ([Wikipedia][7])             | Occurs in the subtropical Indian region, likely present locally.                                      |
+| 6  | Casearia tomentosa    | Bhari / Kakoli              | Antimicrobial, antioxidant; used for diabetes, skin disorders, wound healing. ([Wikipedia][8])                     | Generic plant found in India; likely part of local medicinal flora.                                   |
+| 7  | Vachellia leucophloea | Reonja (White Bark Acacia)  | Used in traditional medicine: expectorant, antipyretic, for coughs, wounds. ([Wikipedia][9])                       | Native to India including Punjab region; part of local tree flora.                                    |
+| 8  | Boerhavia diffusa     | Punarnava                   | Used for pain relief, kidney support, diuretic, rejuvenating. ([Wikipedia][10])                                    | Widely found in India; likely used in local ethnomedicine.                                            |
+| 9  | Asparagus racemosus   | Shatavari                   | Female reproductive health, adaptogen, immune support. (Mentioned in Bathinda flora list) ([The Tribune][2])       | Recognised among medicinal plants in the Malwa region.                                                |
+| 10 | Cassia fistula        | Amaltas (Golden Shower)     | Laxative, antioxidant, used in skin & liver conditions. Mentioned for anti-cancerous potential. ([The Tribune][2]) | Identified as one of the significant medicinal taxa in Bathinda district.                             |
+
+### 📝 Notes & Tips:
+
+* These plants reflect *traditional and ethnobotanical knowledge* in the Bathinda / Malwa region. ([cuestionesdefisioterapia.com][4])
+* Local climate in Bathinda is semi-arid; when cultivating, consider soil type, heat tolerance, and water-availability.
+* For your hobby / intentional living goals, you could pick 3–5 of these to **grow at home**, document their growth, learn uses and local lore — which aligns with your interest in building knowledge/hobby.
+* When using medicinal plants: **Always confirm proper identification**, proper parts (root, leaf, bark), dosage, compatibility with any health conditions you have (you mentioned PCOS, allergies).
+* Since you have dust allergies and other health goals—plants that support immune health (like Ashwagandha, Neem), anti-inflammatory ones (Turmeric) may be more aligned, but again, use with caution and under guidance.
+

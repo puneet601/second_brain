@@ -1,0 +1,65 @@
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.log
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# -----------------------------
+# Dependency and build artifacts
+# -----------------------------
+*.lock
+*.sqlite3
+dist/
+build/
+*.egg-info/
+
+# -----------------------------
+# Project-specific files
+# -----------------------------
+# Memory and runtime files
+memory.json
+*.db
+*.sqlite
+*.chroma
+
+# Local evaluation outputs and reports
+eval_report.md
+*.eval
+*.tmp
+
+# -----------------------------
+# OS-specific ignores
+# -----------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# IDE/editor files
+# -----------------------------
+.vscode/
+.idea/
+*.swp
+
+# -----------------------------
+# UV (Python tool) related
+# -----------------------------
+.uv/
+uv.lock
+
+# -----------------------------
+# Data & cache directories
+# -----------------------------
+data/
+cache/
+logs/
