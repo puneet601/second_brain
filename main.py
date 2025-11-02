@@ -1,3 +1,6 @@
+from core.agents import Orchestrator
+
+
 def main():
     print("Hello from your second-brain! The bot is ready to chat. Please reply with /exit to quit")
     query = input("You:")
@@ -5,4 +8,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    app = Orchestrator()
+    app.run()
