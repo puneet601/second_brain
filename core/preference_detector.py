@@ -15,12 +15,19 @@ class PreferenceAgent:
             {
                 "title": "<short descriptive title>",
                 "content": "<details>"
+                "query_detected":False
             }
-            If nothing is found, return an empty object {}.
+            If a preference is found and the user also has a query return 
+            {
+                "title": "<short descriptive title>",
+                "content": "<details>"
+                "query_detected": True
+            }
+            If no prefernce is deteced and user has just asked a question, return an empty object {}.
             """
         )
 
-    def analyze(self, query: str):
+    def run(self, query: str):
         result = self.agent.run_sync(query)
         print(result)
         output = result.output if hasattr(result, "output") else str(result)

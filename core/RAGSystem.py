@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import SpacyTextSplitter
 from core.logger import logger
 from core.utils import read_notes
+import uuid
 
 
 class RAGSystem:
@@ -61,6 +62,7 @@ class RAGSystem:
         if not chunks:
             logger.warning("No chunks provided for vector DB setup.")
             return None
+        embeddings = [self.model.encode(chunk).tolist() for chunk in chunks]
 
         try:
             collection = self.client.create_collection(
@@ -72,11 +74,11 @@ class RAGSystem:
             collection = self.client.get_collection(self.collection_name)
             logger.info(f"Using existing Chroma collection: {self.collection_name}")
 
-        ids = [str(i) for i in range(len(chunks))]
+        ids = [str(uuid.uuid4()) for _ in chunks]
         metadatas = [{"source": "local_notes"} for _ in chunks]
 
         if collection.count() == 0:
-            collection.add(ids=ids, documents=chunks, metadatas=metadatas)
+            collection.add(ids=ids, documents=chunks,embeddings=embeddings, metadatas=metadatas)
             logger.info(f"Stored {len(chunks)} chunks in vector database.")
         else:
             logger.info(f"Collection already contains {collection.count()} chunks.")
@@ -91,8 +93,7 @@ class RAGSystem:
         logger.debug(f"Query embedding generated for: '{query}'")
         return query_embedding
 
-    def search_vector_database(self, query_embedding, top_k: int = 3) -> List[Dict]:
-        """Retrieve top-k most similar chunks."""
+    def search_vector_database(self, query_embedding, top_k:int = 5) -> List[Dict]:
         if self.collection is None:
             raise RuntimeError("Vector collection not initialized. Run setup_vector_db() first.")
 
@@ -128,10 +129,11 @@ class RAGSystem:
             f"Source {i+1}: {res['metadata'].get('source', 'Unknown Source')}\n{res['content']}"
             for i, res in enumerate(search_results)
         ]
+        # logger.info(context_parts)
+        
         context = "\n\n".join(context_parts)
-
         augmented_prompt = f"""
-        Based on the following notes, answer the user's question.
+        Based on the following context, answer the user's question.
 
         CONTEXT:
         {context}
@@ -140,5 +142,33 @@ class RAGSystem:
 
         Please provide a clear, accurate, and concise answer with source references.
         """
-        logger.debug(f"Augmented prompt created for query: '{query}'")
+        logger.debug(f"Augmented prompt created for query: '{augmented_prompt}'")
         return augmented_prompt
+    
+
+    def add_to_vector_db(self, context:Dict):
+        text = context.get("content") or ""
+        if not text.strip():
+            logger.warning("⚠️ No valid context text found, skipping addition.")
+            return
+        logger.info(f"context from convo: {text}")
+        # Split into chunks
+        if self.nlp:
+            sentence_splitter = SpacyTextSplitter(chunk_size=400, chunk_overlap=50)
+            chunks = sentence_splitter.split_text(text)
+            logger.info(f"✅ Created {len(chunks)} chunks from conversation context.")
+        else:
+            chunks = [text]
+
+        # Embed
+        embeddings = [self.model.encode(chunk).tolist() for chunk in chunks]
+
+        # Add to vector DB
+        collection = self.client.get_collection(self.collection_name)
+        ids = ids = [str(uuid.uuid4()) for _ in chunks]
+
+        metadatas = [{"source": "user_conversation"} for _ in chunks]
+
+        collection.add(ids=ids, documents=chunks, embeddings=embeddings, metadatas=metadatas)
+        logger.debug("🧩 Added conversation context to vector DB successfully.")
+
