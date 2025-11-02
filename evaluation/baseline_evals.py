@@ -1,7 +1,7 @@
 # evaluation/baseline_evals.py
 import json
 from pydantic_evals import Case, Dataset
-from second_brain.core.controller_agent import ControllerAgent
+from core.controller_agent import ControllerAgent
 
 
 controller = ControllerAgent()
@@ -29,4 +29,4 @@ dataset = Dataset(cases=cases)
 # Optionally assign dataset-level evaluators if needed
 
 report = dataset.evaluate_sync(task_function)
-print(report.summary())
+report.print()

@@ -1,0 +1,15 @@
+# Core dependencies
+langchain-text-splitters>=0.2.1
+sentence-transformers>=3.2.0
+pydantic-ai>=1.9.1
+spacy>=3.8.7
+openai>=1.52.0
+tiktoken>=0.7.0
+
+# Scientific + utility stack
+numpy>=1.26.4
+pandas>=2.2.2
+tqdm>=4.66.5
+
+# Optional (useful for structured logging and typing)
+typing-extensions>=4.12.2
