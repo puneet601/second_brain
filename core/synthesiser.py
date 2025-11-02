@@ -22,6 +22,7 @@ class SynthesizerAgent:
                 > “The notes and previous conversations do not contain any relevant information.”
                 5. Avoid markdown, code blocks, or special formatting.
                 6. Keep the response short, natural, and conversational.
+                7. Redact any PII data like emails, phone numbers, credit card or bank details etc..
 
                 ### Example:
                 Prompt:

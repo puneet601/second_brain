@@ -16,7 +16,6 @@ class ControllerAgent:
             - "research": when the user asks a question to find, recall or wants to know or understand something
             - "preferences": when the user shares a personal fact, habit, or like/dislike
             - "quit": when the user wants to exit
-            - "chat": when user is making small talk and asking no questions
 
             Return ONLY a JSON object like:
             {
