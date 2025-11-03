@@ -1,10 +1,7 @@
 import json
 import os
 import asyncio
-try:
-    from pydantic_evals.evaluators import LLMJudge
-except ImportError:
-    from pydantic_evals.evaluators.llm_as_a_judge import LLMJudge
+from pydantic_evals.evaluators.llm_as_a_judge import LLMJudge
 from core.utils import read_notes
 
 async def compare_baseline_and_orchestrator(baseline_output: str, orchestrator_output: str, prompt: str):
@@ -18,7 +15,7 @@ async def compare_baseline_and_orchestrator(baseline_output: str, orchestrator_o
         raise EnvironmentError("⚠️ GEMINI_API_KEY not set in environment.")
 
     # The model reads the key automatically from env — no api_key arg needed
-    judge = LLMJudge(model="gemini-2.5-pro")
+    judge = LLMJudge(model="gemini-2.5-pro",rubric='All factual claims in the response are supported by the provided context')
 
     notes_context = read_notes() or "The notes and previous conversations do not contain any relevant information."
 
