@@ -8,7 +8,7 @@ It integrates **retrieval-augmented generation (RAG)**, **controller-driven orch
 ---
 
 ## ⚙️ Architecture
-
+```plaintext
 second_brain/
 ├── core/                     # Core logic of all agents
 │   ├── controller_agent.py   # Controls decision routing
@@ -38,7 +38,7 @@ second_brain/
 ├── requirements.txt          # Python dependencies
 ├── pyproject.toml            # Build configuration
 └── uv.lock                   # Dependency lockfile
-
+```
 ## 🧩 Agent Roles
 
 ### 1. ControllerAgent
