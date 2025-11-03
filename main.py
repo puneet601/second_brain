@@ -1,4 +1,4 @@
-from core.agents import Orchestrator
+from core.orchestrator import Orchestrator
 
 
 def main():
