@@ -29,8 +29,6 @@ class ControllerAgent:
         result = self.agent.run_sync(query)
         output = getattr(result, "output", str(result))
         cleaned = re.sub(r"```(json)?", "", output).strip("` \n")
-        print(f"controller output {result}")
-        print(f"controller output cleaned {cleaned}")
         try:
             return json.loads(cleaned)
         except json.JSONDecodeError:

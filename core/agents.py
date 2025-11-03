@@ -6,6 +6,7 @@ from core.researcher import ResearchAgent
 from core.synthesiser import SynthesizerAgent
 from core.controller_agent import ControllerAgent
 import json
+from core.guardrails import redact_pii,detect_pii
 
 
 class Orchestrator:
@@ -22,9 +23,14 @@ class Orchestrator:
         print("🤖 Your Second Brain is online. Type 'quit' to exit.\n")
 
         while True:
-            user_input = input("You: ")
+            user_input_raw = input("You: ")
 
             # Step 1: Decide action
+            pii_entities = detect_pii(user_input_raw)
+            if pii_entities:
+                user_input = redact_pii(user_input_raw)
+            else:
+                user_input = user_input_raw
             decision = self.controller.decide_action(user_input)
             actions = decision.get("actions", ["chat"])
 
