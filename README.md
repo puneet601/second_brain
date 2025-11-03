@@ -106,6 +106,10 @@ uv run python -m core.orchestrator
 ```bash
 uv run python -m evaluation.baseline_evals
 ```
+### Observability - Otle_tui with Logfire
+<img width="50%" height="50%" alt="image" src="https://github.com/user-attachments/assets/c6924521-4edc-43e4-8a28-0e53d83c8c5f" />
+<img width="50%" height="50%" alt="image" src="https://github.com/user-attachments/assets/05999b13-4022-4fb9-90bc-d4f74924b651" />
+
 
 ---
 
