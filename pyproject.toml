@@ -10,9 +10,11 @@ dependencies = [
     "openai>=2.6.1",
     "opentelemetry-api>=1.38.0",
     "opentelemetry-sdk>=1.38.0",
-    "pydantic-ai>=1.9.1",
+    "pydantic-ai[logfire]>=1.9.1",
+    "pydantic-ai-slim[logfire]>=1.9.1",
     "pydantic-evals>=1.9.1",
     "rich>=14.2.0",
     "sentence-transformers>=5.1.2",
     "spacy>=3.8.7",
+    "opentelemetry-exporter-otlp>=1.38.0",
 ]

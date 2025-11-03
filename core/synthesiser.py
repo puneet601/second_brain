@@ -1,4 +1,7 @@
 from pydantic_ai import Agent
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
 
 class SynthesizerAgent:
     def __init__(self):
@@ -33,11 +36,12 @@ class SynthesizerAgent:
                 What do I like?
 
                 Response:
-                Based on previous conversations, you like cats, eagles, and BTS.
+                You like cats, eagles, and BTS.
                 """
                 )
 
     def run(self, augmented_prompt: str):
-        """Takes the full augmented prompt (already including context and question) and returns a response."""
-        result = self.agent.run_sync(augmented_prompt)
-        return result.output.strip()
+         with tracer.start_as_current_span("SynthesisAgent.run"):
+            """Takes the full augmented prompt (already including context and question) and returns a response."""
+            result = self.agent.run_sync(augmented_prompt)
+            return result.output.strip()

@@ -7,7 +7,6 @@ from langchain_text_splitters import SpacyTextSplitter
 from core.logger import logger
 from core.utils import read_notes
 
-
 class RAGSystem:
     def __init__(self, memory_path: str = "./data/memory", collection_name: str = "notes"):
         self.memory_path = memory_path

@@ -1,3 +1,4 @@
+from core.observability import init_observability
 from core.orchestrator import Orchestrator
 
 
@@ -8,5 +9,6 @@ def main():
 
 
 if __name__ == "__main__":
+    init_observability(local_only=True)
     app = Orchestrator()
     app.run()

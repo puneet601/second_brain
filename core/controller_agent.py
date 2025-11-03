@@ -1,7 +1,9 @@
 from pydantic_ai import Agent
 import json, re
-
+from opentelemetry import trace
+tracer = trace.get_tracer(__name__)
 class ControllerAgent:
+    
     def __init__(self):
         self.agent = Agent(
             model="google-gla:gemini-2.5-pro",
@@ -26,10 +28,11 @@ class ControllerAgent:
         )
 
     def decide_action(self, query: str):
-        result = self.agent.run_sync(query)
-        output = getattr(result, "output", str(result))
-        cleaned = re.sub(r"```(json)?", "", output).strip("` \n")
-        try:
-            return json.loads(cleaned)
-        except json.JSONDecodeError:
-            return {"actions": ["chat"], "reason": "Default fallback"}
+        with tracer.start_as_current_span("ControllerAgent.decide_action"):
+            result = self.agent.run_sync(query)
+            output = getattr(result, "output", str(result))
+            cleaned = re.sub(r"```(json)?", "", output).strip("` \n")
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError:
+                return {"actions": ["chat"], "reason": "Default fallback"}
