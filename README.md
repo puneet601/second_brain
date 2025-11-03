@@ -98,7 +98,7 @@ uv pip install -r requirements.txt
 ### Run the MAS
 
 ```bash
-uv run python main.py
+uv run python -m core.orchestrator
 ```
 
 ### Evaluate Performance
