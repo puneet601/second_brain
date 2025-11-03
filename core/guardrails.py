@@ -1,53 +1,48 @@
-# second_brain/core/pii_guardrail.py
-
 from presidio_analyzer import AnalyzerEngine
-from presidio_anonymizer import AnonymizerEngine
+from presidio_anonymizer import AnonymizerEngine, OperatorConfig
 
-# Initialize analyzers (you can make them singletons if reused often)
+from core.logger import logger
+
 analyzer = AnalyzerEngine()
 anonymizer = AnonymizerEngine()
 
-def detect_pii(text: str):
-    """
-    Detect PII entities in the given text using Microsoft Presidio.
-    """
-    results = analyzer.analyze(text=text, language="en")
-    pii_entities = [r.entity_type for r in results]
-    return pii_entities
-
 def redact_pii(text: str) -> str:
     """
-    Returns a cleaned version with PII replaced by placeholders.
+    Redacts PII entities from text using Microsoft Presidio.
+    Replaces sensitive entities with labeled placeholders.
     """
     if not text or not isinstance(text, str):
         return text
 
-    # Step 1: Analyze text for PII entities
+    # Step 1: Detect entities
     results = analyzer.analyze(text=text, language="en")
 
     if not results:
-        return text  # No PII detected, return original
+        return text
 
-    # Step 2: Replace PII entities with labeled placeholders
+    # Step 2: Define operator configurations properly
+    operators = {
+        "DEFAULT": OperatorConfig("replace", {"new_value": "<REDACTED>"}),
+        "EMAIL_ADDRESS": OperatorConfig("replace", {"new_value": "<EMAIL>"}),
+        "PHONE_NUMBER": OperatorConfig("replace", {"new_value": "<PHONE_NUMBER>"}),
+        "CREDIT_CARD": OperatorConfig("replace", {"new_value": "<CREDIT_CARD>"}),
+        "PERSON": OperatorConfig("replace", {"new_value": "<PERSON>"}),
+        "LOCATION": OperatorConfig("replace", {"new_value": "<LOCATION>"}),
+        "DATE_TIME": OperatorConfig("replace", {"new_value": "<DATE_TIME>"}),
+        "NRP": OperatorConfig("replace", {"new_value": "<NRP>"}),
+    }
+
+    # Step 3: Apply anonymization
     anonymized_result = anonymizer.anonymize(
         text=text,
         analyzer_results=results,
-        operators={
-            "DEFAULT": {"type": "replace", "new_value": "<REDACTED>"},
-            "EMAIL_ADDRESS": {"type": "replace", "new_value": "<EMAIL>"},
-            "PHONE_NUMBER": {"type": "replace", "new_value": "<PHONE_NUMBER>"},
-            "CREDIT_CARD": {"type": "replace", "new_value": "<CREDIT_CARD>"},
-            "PERSON": {"type": "replace", "new_value": "<PERSON>"},
-            "LOCATION": {"type": "replace", "new_value": "<LOCATION>"},
-            "DATE_TIME": {"type": "replace", "new_value": "<DATE_TIME>"},
-            "NRP": {"type": "replace", "new_value": "<NRP>"},  # e.g., national ID
-        },
+        operators=operators
     )
-
+    logger.info(f"results from redact_pii {anonymized_result.text}")
     return anonymized_result.text
 
-# Example (you can test this directly)
-if __name__ == "__main__":
-    sample = "My email is puneet@example.com and my phone number is +91 9876543210"
-    print("Detected PII:", detect_pii(sample))
-    print("Cleaned text:", anonymize_pii(sample))
+
+def detect_pii(text: str):
+    results = analyzer.analyze(text=text, language="en")
+    logger.info(f"results from pii_detect {results}")
+    return [r.entity_type for r in results]
