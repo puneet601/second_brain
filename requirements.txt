@@ -23,5 +23,3 @@ json5
 typing-extensions
 uuid
 glob2
-os-sys
-
