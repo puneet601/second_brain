@@ -6,11 +6,11 @@ class ControllerAgent:
     
     def __init__(self):
         self.agent = Agent(
-            model="google-gla:gemini-2.5-pro",
+            model="gemini-2.5-flash",
             instructions="""
             You are an AI Orchestrator that analyzes user input and decides which specialized agents to trigger.
 
-            A single input may contain **multiple intents**, e.g.:
+            A single input may contain multiple intents, e.g.:
             - "I like cats and eagles. Can you suggest a good documentary about them?"
               → preferences + research
 
