@@ -1,14 +1,14 @@
 from __future__ import annotations
 from typing import Any
+from core.presidio_engine import create_presidio_analyzer
 from pydantic_evals.evaluators import LLMJudge
-from presidio_analyzer import AnalyzerEngine
 from presidio_anonymizer import AnonymizerEngine
 from core.synthesiser import SynthesizerAgent
 from pydantic_evals import Case, Dataset
 from pydantic_evals.evaluators import EvaluationResult
 
 # Initialize Presidio (for PII detection)
-analyzer = AnalyzerEngine()
+analyzer = create_presidio_analyzer()
 anonymizer = AnonymizerEngine()
 
 # Instantiate the agent

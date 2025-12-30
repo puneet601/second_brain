@@ -17,7 +17,9 @@ opentelemetry-exporter-otlp
 opentelemetry-api
 pydantic-evals
 logfire
-
+dspy
+presidio_analyzer
+langchain_text_splitters
 asyncio
 json5
 typing-extensions

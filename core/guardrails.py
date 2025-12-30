@@ -1,9 +1,10 @@
-from presidio_analyzer import AnalyzerEngine
 from presidio_anonymizer import AnonymizerEngine, OperatorConfig
+from core.presidio_engine import create_presidio_analyzer
+
 
 from core.logger import logger
 
-analyzer = AnalyzerEngine()
+analyzer = create_presidio_analyzer()
 anonymizer = AnonymizerEngine()
 
 def redact_pii(text: str) -> str:
