@@ -6,23 +6,37 @@ from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import SpacyTextSplitter
 from core.logger import logger
 from core.utils import read_notes
+import time
+from otel_setup import (
+    tracer,
+    agent_latency,
+    rag_hits,
+    agent_invocations,
+)
 
 class RAGSystem:
     def __init__(self, memory_path: str = "./data/memory", collection_name: str = "notes"):
-        self.memory_path = memory_path
-        self.collection_name = collection_name
-        self.client = chromadb.PersistentClient(path=self.memory_path)
-        self.collection = None
+        with tracer.start_as_current_span("rag.init") as span:
+            start = time.time()
+            self.memory_path = memory_path
+            self.collection_name = collection_name
+            self.client = chromadb.PersistentClient(path=self.memory_path)
+            self.collection = None
 
-        # ✅ Fixed: Proper spaCy model initialization
-        self.nlp = self._load_spacy_model()
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
-        self.sentence_chunks: List[str] = []
+            # Proper spaCy model initialization
+            self.nlp = self._load_spacy_model()
+            self.model = SentenceTransformer("all-MiniLM-L6-v2")
+            self.sentence_chunks: List[str] = []
 
-        # ✅ Load and prepare vector database
-        chunks = self.load_and_chunk_documents()
-        self.setup_vector_db(chunks)
-        logger.info("✅ RAGSystem initialized successfully.")
+            #Load and prepare vector database
+            chunks = self.load_and_chunk_documents()
+            self.setup_vector_db(chunks)
+            duration = (time.time() - start) * 1000
+            agent_latency.record(duration, {"component": "rag", "stage": "init"})
+            agent_invocations.add(1, {"component": "rag"})
+
+            span.set_attribute("rag.chunks.total", len(chunks))
+            logger.info("✅ RAGSystem initialized successfully.")
 
     def _load_spacy_model(self):
         """Load spaCy model or fallback gracefully."""
@@ -41,7 +55,6 @@ class RAGSystem:
             logger.warning("No documents found for ingestion.")
             return []
 
-        # ✅ Use sentence-aware chunking when spaCy is available
         if self.nlp:
             sentence_splitter = SpacyTextSplitter(chunk_size=400, chunk_overlap=50)
             sentence_chunks = []
@@ -52,7 +65,7 @@ class RAGSystem:
             logger.info(f"✅ Created {len(sentence_chunks)} total chunks.")
         else:
             logger.warning("spaCy unavailable – using full documents as chunks.")
-            sentence_chunks = docs  # fallback: no splitting
+            sentence_chunks = docs  
 
         self.sentence_chunks = sentence_chunks
         return sentence_chunks
@@ -98,31 +111,42 @@ class RAGSystem:
 
     def search_vector_database(self, query_embedding, top_k: int = 5) -> List[Dict]:
         """Search top-k most relevant documents from the vector DB."""
-        if self.collection is None:
-            raise RuntimeError("Vector collection not initialized. Run setup_vector_db() first.")
+        with tracer.start_as_current_span("rag.search") as span:
+            span.set_attribute("top_k", top_k)
+            if self.collection is None:
+                raise RuntimeError("Vector collection not initialized. Run setup_vector_db() first.")
+            span.set_attribute("collection.ready", True)
 
-        results = self.collection.query(
-            query_embeddings=[query_embedding.tolist()],
-            n_results=top_k
-        )
+            start = time.time()
+            results = self.collection.query(
+                query_embeddings=[query_embedding.tolist()],
+                n_results=top_k
+            )
+            duration = (time.time() - start) * 1000
 
-        search_results = []
-        for i, (doc_id, distance, content, metadata) in enumerate(zip(
-            results["ids"][0],
-            results["distances"][0],
-            results["documents"][0],
-            results["metadatas"][0]
-        )):
-            similarity = 1 - distance
-            search_results.append({
-                "id": doc_id,
-                "content": content,
-                "metadata": metadata,
-                "similarity": similarity
-            })
-            logger.debug(f"[{i+1}] Similarity: {similarity:.3f} | Content: {content[:100]}...")
+            hits = len(results["documents"][0])
+            span.set_attribute("rag.hits", hits)
 
-        return search_results
+            rag_hits.add(hits)
+            agent_latency.record(duration, {"component": "rag", "stage": "search"})
+
+            search_results = []
+            for i, (doc_id, distance, content, metadata) in enumerate(zip(
+                results["ids"][0],
+                results["distances"][0],
+                results["documents"][0],
+                results["metadatas"][0]
+            )):
+                similarity = 1 - distance
+                search_results.append({
+                    "id": doc_id,
+                    "content": content,
+                    "metadata": metadata,
+                    "similarity": similarity
+                })
+                logger.debug(f"[{i+1}] Similarity: {similarity:.3f} | Content: {content[:100]}...")
+
+            return search_results
 
     # --------------------------------------------------------------------------------
     # 6️⃣ Context augmentation

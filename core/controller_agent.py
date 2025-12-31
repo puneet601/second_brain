@@ -1,7 +1,8 @@
+import time
 from pydantic_ai import Agent
 import json, re
-from opentelemetry import trace
-tracer = trace.get_tracer(__name__)
+from otel_setup import tracer, request_latency
+
 class ControllerAgent:
     
     def __init__(self):
@@ -28,11 +29,18 @@ class ControllerAgent:
         )
 
     def decide_action(self, query: str):
-        with tracer.start_as_current_span("ControllerAgent.decide_action"):
+        with tracer.start_as_current_span("ControllerAgent.decide_action") as span:
+            span.set_attribute("input.length", len(query))
+            span.set_attribute("system.variant", "multi_agent")
+            start = time.time()
             result = self.agent.run_sync(query)
+            duration = (time.time() - start) * 1000
+
+            request_latency.record(duration)
             output = getattr(result, "output", str(result))
             cleaned = re.sub(r"```(json)?", "", output).strip("` \n")
             try:
                 return json.loads(cleaned)
             except json.JSONDecodeError:
+                span.add_event("json_parse_failed")
                 return {"actions": ["chat"], "reason": "Default fallback"}
