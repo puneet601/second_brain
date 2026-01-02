@@ -27,8 +27,8 @@ class PreferenceAgent:
             """
         )
 
-    def run(self, query: str):
-        result = self.agent.run_sync(query)
+    async def run(self, query: str):
+        result = await self.agent.run(query)
         print(result)
         output = result.output if hasattr(result, "output") else str(result)
 

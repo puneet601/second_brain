@@ -28,12 +28,12 @@ class ControllerAgent:
             """
         )
 
-    def decide_action(self, query: str):
+    async def decide_action(self, query: str):
         with tracer.start_as_current_span("ControllerAgent.decide_action") as span:
             span.set_attribute("input.length", len(query))
             span.set_attribute("system.variant", "multi_agent")
             start = time.time()
-            result = self.agent.run_sync(query)
+            result = await self.agent.run(query)
             duration = (time.time() - start) * 1000
 
             request_latency.record(duration)

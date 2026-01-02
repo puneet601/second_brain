@@ -40,8 +40,8 @@ class SynthesizerAgent:
                 """
                 )
 
-    def run(self, augmented_prompt: str):
+    async def run(self, augmented_prompt: str):
          with tracer.start_as_current_span("SynthesisAgent.run"):
             """Takes the full augmented prompt (already including context and question) and returns a response."""
-            result = self.agent.run_sync(augmented_prompt)
+            result = await self.agent.run(augmented_prompt)
             return result.output.strip()
