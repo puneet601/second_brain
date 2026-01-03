@@ -1,41 +1,41 @@
 {
   "summary": {
     "total_cases": 5,
-    "orchestrator_wins": 0,
-    "baseline_wins": 5,
+    "orchestrator_wins": 4,
+    "baseline_wins": 1,
     "ties": 0,
-    "win_rate": 0.0
+    "win_rate": 0.8
   },
   "results": [
     {
       "id": "preference_with_research",
       "prompt": "I like Bollywood dances, can you recommend good Bollywood movies?",
-      "winner": "baseline",
-      "reason": "The baseline response provides a list of recommended Bollywood movies, which is what the user asked for. The orchestrator response gives a canned answer and does not attempt to answer the user's question at all. Therefore, the baseline response is much better."
+      "winner": "orchestrator",
+      "reason": "The orchestrator provides a more comprehensive and well-structured list of movies. It gives a short description and lists key dance sequences for each film, which is exactly what the user is looking for. The baseline's response is good, but the formatting is not as clean, and the list is not as extensive."
     },
     {
       "id": "pure_research",
       "prompt": "What plants are good for indoor air purification?",
-      "winner": "baseline",
-      "reason": "Both responses correctly state that they cannot answer the user's question based on the information they have. However, the baseline response is slightly better because it gives the user more context as to what information it *does* have access to, which helps explain why it cannot answer the question."
+      "winner": "orchestrator",
+      "reason": "The orchestrator's response is more helpful. Both responses correctly state that the information is not available in the provided context. However, the orchestrator's response goes a step further by providing related information that the user might find useful, which is a better user experience."
     },
     {
       "id": "preference_only",
       "prompt": "I really enjoy cooking Indian food.",
-      "winner": "baseline",
-      "reason": "The baseline response is much better because it provides a relevant and helpful response to the user's statement. It identifies a document related to the user's interest and gives a useful summary.\n\nThe orchestrator's response is just a system message and isn't a conversational or helpful reply. It doesn't engage with the user's statement at all."
+      "winner": "orchestrator",
+      "reason": "The user makes a statement about a hobby. The orchestrator's response is conversational and acknowledges the user's statement in a positive and encouraging way. The baseline's response is a non-sequitur, providing a file path that seems to be for a recipe, which the user did not ask for. The orchestrator provides a much more natural and appropriate response."
     },
     {
       "id": "out_of_scope",
       "prompt": "Tell me about the weather in New York.",
-      "winner": "baseline",
-      "reason": "The user asks for the weather in New York. The baseline correctly states that it cannot answer this question based on the provided context. The orchestrator, on the other hand, gives a completely irrelevant answer about the climate in a different city. The baseline's response is helpful and accurate, while the orchestrator's is confusing and unhelpful."
+      "winner": "orchestrator",
+      "reason": "The orchestrator's response is much more helpful. Both responses correctly state that they cannot answer the user's question. However, the orchestrator goes a step further by providing a detailed list of topics it *can* discuss, complete with examples from the provided context. This proactive and helpful approach makes for a much better user experience."
     },
     {
       "id": "ambiguous",
       "prompt": "I like movies and plants. Any suggestions?",
       "winner": "baseline",
-      "reason": "The user asked for suggestions for both movies and plants. The baseline response provides suggestions for both topics. The orchestrator response only gives movie suggestions and incorrectly states that there is no information about plants. Therefore, the baseline response is more complete and helpful."
+      "reason": "The baseline response is better because it answers both parts of the user's prompt, providing suggestions for movies and plants. The orchestrator response only provides movie suggestions and incorrectly states that no information on plants is available."
     }
   ]
 }
