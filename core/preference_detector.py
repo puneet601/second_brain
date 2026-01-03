@@ -1,42 +1,51 @@
 from pydantic_ai import Agent
-import json
-import re
+from typing import Optional
+from core.logger import logger
+from core.models.Preference import Preference
+
 
 class PreferenceAgent:
     def __init__(self):
         self.agent = Agent(
             model="google-gla:gemini-2.5-pro",
+            output_type=Optional[Preference],  # ✅ FIXED
             instructions="""
-            You act as a conversation expert. Your job is to detect if the user shares 
-            any information about themselves, their work, projects, or preferences.
-            Structure this info as an object with a title based on the data and content discovered.
-            If nothing is detected, return an empty string.
-            Return ONLY a JSON object in this format:
-            {
-                "title": "<short descriptive title>",
-                "content": "<details>"
-                "query_detected":False
-            }
-            If a preference is found and the user also has a query return 
-            {
-                "title": "<short descriptive title>",
-                "content": "<details>"
-                "query_detected": True
-            }
-            If no prefernce is deteced and user has just asked a question, return an empty object {}.
-            """
+        You are a preference detection agent.
+
+        Your job:
+        - Detect whether the user shares information about themselves, their interests, habits, work, or preferences.
+
+        Rules:
+        - Return structured data only.
+        - Do NOT speak to the user.
+        - Do NOT give recommendations.
+        - Do NOT explain anything.
+
+        If a preference is found:
+        - Populate title and content.
+        - Set query_detected = true if the user ALSO asked a question.
+
+        If NO preference is found:
+        - Return null.
+
+        Examples:
+
+        User: "I love Bollywood dance movies, can you suggest some?"
+        → title: "Bollywood Dance Movies"
+        → content: "User enjoys Bollywood movies focused on dance."
+        → query_detected: true
+
+        User: "What plants are good for indoor air purification?"
+        → null
+        """
         )
 
-    async def run(self, query: str):
-        result = await self.agent.run(query)
-        print(result)
-        output = result.output if hasattr(result, "output") else str(result)
+    async def run(self, user_input: str) -> Optional[Preference]:
+        result = await self.agent.run(user_input)
 
-        # remove code block formatting like ```json ... ```
-        cleaned = re.sub(r"```(json)?", "", output).strip("` \n")
+        preference: Optional[Preference] = result.output
 
-        try:
-            parsed = json.loads(cleaned)
-            return parsed if isinstance(parsed, dict) else {}
-        except json.JSONDecodeError:
-            return {}
+        if preference:
+            logger.info(f"Preference detected: {preference.model_dump()}")
+
+        return preference

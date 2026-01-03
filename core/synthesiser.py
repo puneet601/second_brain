@@ -1,47 +1,62 @@
+from core.logger import logger
 from pydantic_ai import Agent
 from opentelemetry import trace
 
 tracer = trace.get_tracer(__name__)
 
+
 class SynthesizerAgent:
+    """
+    Synthesizes user queries and retrieved context into rich, detailed, actionable answers.
+    """
     def __init__(self):
         self.agent = Agent(
             model="google-gla:gemini-2.5-pro",
             instructions="""
-                You are a **synthesizer agent** for a retrieval-augmented personal assistant.
+            You are a helpful assistant that answers questions using the context provided. 
+            Your answers must be:
+            - Rich and detailed
+            - Structured with lists or bullets where appropriate
+            - Include descriptions, ratings, or key highlights for items like movies, recipes, or plants
+            - Avoid repeating information
+            - Cite the source (from the CONTEXT) for each fact or item
+            - Follow english grammar rules and do not use unecessary '*' or symbols
+            - The final answer must be conversational 
+            Please provide a response in plain text optimised to be easily readable.
+only use bullets, numbers in a list and do not use markdown formatting. 
+Give clear, readable sentences only.
+            - do not mention source as source 1 or 2.
 
-                Your task:
-                - Read the prompt provided to you. It will already include both **CONTEXT** and **QUESTION** sections.
-                - The CONTEXT may contain information from:
-                - **local notes**, or
-                - **previous user conversations**.
-                - Based on that context, generate a **concise, factual answer** to the question.
 
-                ### Rules:
-                1. **Only** use information explicitly found in the CONTEXT.
-                2. If the context mentions a document or metadata source, reference it naturally (e.g., “Based on previous conversations…” or “According to your notes…”).
-                3. Do **not invent or assume** anything outside the context.
-                4. If no relevant context is provided, respond with:
-                > “The notes and previous conversations do not contain any relevant information.”
-                5. Avoid markdown, code blocks, or special formatting.
-                6. Keep the response short, natural, and conversational.
-                7. Redact any PII data like emails, phone numbers, credit card or bank details etc..
+        
+            """
+        )
 
-                ### Example:
-                Prompt:
-                CONTEXT:
-                Source 1 (user_conversation): The user likes cats, eagles, and BTS.
+    async def run(self, query: str, context_chunks: list[dict]):
+        with tracer.start_as_current_span("SynthesizerAgent.run"):
+            # Combine context into a single text block for the prompt
+            context_text = "\n\n".join(
+                f"Source {i+1}: {chunk.get('metadata', {}).get('source', 'Unknown')}\n{chunk['content']}"
+                for i, chunk in enumerate(context_chunks)
+            )
 
-                QUESTION:
-                What do I like?
+            prompt = f"""
+            Based on the following context, provide a detailed, structured answer to the user's question.
 
-                Response:
-                You like cats, eagles, and BTS.
-                """
-                )
+            CONTEXT:
+            {context_text}
 
-    async def run(self, augmented_prompt: str):
-         with tracer.start_as_current_span("SynthesisAgent.run"):
-            """Takes the full augmented prompt (already including context and question) and returns a response."""
-            result = await self.agent.run(augmented_prompt)
-            return result.output.strip()
+            QUESTION: {query}
+
+            Please provide a clear, rich, and informative response to all the queries asked in the question in a structured format, including highlights, ratings, or descriptions where applicable, and cite sources from the context.
+            answer when user asks a query, if the user only tells something acknowledge it with grace.
+            """
+
+            try:
+                result = await self.agent.run(prompt)
+                answer = result.output.strip()
+                logger.info("SynthesizerAgent: Generated response successfully")
+                return answer
+            except Exception as e:
+                logger.exception(f"SynthesizerAgent failed: {str(e)}")
+                return "Sorry, I couldn't generate a detailed answer at this time."

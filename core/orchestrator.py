@@ -1,5 +1,6 @@
 import asyncio
 import json
+from typing import List, Dict, Any
 
 from core.logger import logger
 from core.conversation_memory import ConversationMemory
@@ -20,86 +21,67 @@ class Orchestrator:
         self.research = ResearchAgent(self.rag)
         self.synthesizer_agent = SynthesizerAgent()
 
-    # --------------------------------------------------
-    # SYNC CLI ENTRY (wrapper only)
-    # --------------------------------------------------
-    def run(self):
-        print("🤖 Your Second Brain is online. Type 'quit' to exit.\n")
-
+    
+    async def run(self):
+        print(" Your Second Brain is online. Type 'quit' to exit.\n")
         while True:
             user_input_raw = input("You: ")
             if user_input_raw.strip().lower() == "quit":
                 print("Assistant: 👋 Goodbye!")
                 return
+            await self._run_once_cli(user_input_raw)
 
-            asyncio.run(self._run_once_cli(user_input_raw))
-
-    # --------------------------------------------------
-    # ASYNC CLI LOGIC
-    # --------------------------------------------------
+   
     async def _run_once_cli(self, user_input_raw: str):
-        pii_entities = detect_pii(user_input_raw)
-        user_input = redact_pii(user_input_raw) if pii_entities else user_input_raw
+        response = await self.run_once(user_input_raw)
+        print(f"Assistant: {response['response']}")
 
-        decision = await self.controller.decide_action(user_input)
-        actions = decision.get("actions", ["chat"])
 
-        print(f"🧩 Controller decided: {json.dumps(decision, indent=2)}")
-
-        for action in actions:
-            if action == "research":
-                prompt = self.research.retrieve(user_input)
-                response = await self.synthesizer_agent.run(prompt)
-                print(f"Assistant: {response}\n")
-
-            elif action == "preferences":
-                context = await self.pref.run(user_input)  # ✅ FIXED
-                logger.info(f"context {context}")
-
-                if context:
-                    self.memory.add_message("user", context)
-                    self.rag.add_to_vector_db(context)
-                    self.memory.save()
-                    print("Assistant: 💾 Preference saved to memory.")
-
-            elif action == "chat":
-                print(f"Assistant: 💬 General chat: '{user_input}'")
-
-    # --------------------------------------------------
-    # ASYNC EVALUATION ENTRY (used by baseline_evals)
-    # --------------------------------------------------
     async def run_once(self, user_input_raw: str):
+       
         pii_entities = detect_pii(user_input_raw)
         user_input = redact_pii(user_input_raw) if pii_entities else user_input_raw
 
+       
         decision = await self.controller.decide_action(user_input)
         actions = decision.get("actions", ["chat"])
 
-        response_text = ""
+        collected_context: list[dict] = []
 
+       
         for action in actions:
-            if action == "research":
-                prompt = self.research.retrieve(user_input)
-                response_text = await self.synthesizer_agent.run(prompt)
+            logger.info(f"[EVAL] Action: {action}")
 
-            elif action == "preferences":
-                context = await self.pref.run(user_input)  # ✅ FIXED
-                logger.info(f"context {context}")
+            if action == "preferences":
+                preference = await self.pref.run(user_input)
+                if preference:
+                    pref_dict = preference.model_dump()
+                    collected_context.append(pref_dict)
 
-                if context:
-                    self.memory.add_message("user", context)
-                    self.rag.add_to_vector_db(context)
+                    # Persist memory + RAG (same as CLI)
+                    self.memory.add_message(role="preference", content=pref_dict)
+                    self.rag.add_to_vector_db(pref_dict)
                     self.memory.save()
-                    response_text = "💾 Preference saved to memory."
 
-            elif action == "chat":
-                response_text = f"💬 General chat: '{user_input}'"
+            else:
+                retrieved_context = self.research.retrieve(
+                    user_input
+                )
+                # logger.info(retrieved_context)
+                if retrieved_context:
+                    collected_context.append({
+                        "content": retrieved_context
+                    })
 
-            elif action == "quit":
-                return {"response": "👋 Goodbye!"}
+       
+        final_answer = await self.synthesizer_agent.run(
+            user_input,
+            collected_context
+        )
 
-        return {"response": response_text}
-
+        return {
+            "response": final_answer
+        }
 
 if __name__ == "__main__":
-    Orchestrator().run()
+    asyncio.run(Orchestrator().run())

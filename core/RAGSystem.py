@@ -1,185 +1,127 @@
 import spacy
 import chromadb
 import uuid
+import time
 from typing import Dict, List
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import SpacyTextSplitter
+
 from core.logger import logger
 from core.utils import read_notes
-import time
-from otel_setup import (
-    tracer,
-    agent_latency,
-    rag_hits,
-    agent_invocations,
-)
+from otel_setup import tracer, agent_latency, rag_hits, agent_invocations
+
 
 class RAGSystem:
-    def __init__(self, memory_path: str = "./data/memory", collection_name: str = "notes"):
-        with tracer.start_as_current_span("rag.init") as span:
+    def __init__(self, memory_path: str = "./data/memory"):
+        with tracer.start_as_current_span("rag.init"):
             start = time.time()
-            self.memory_path = memory_path
-            self.collection_name = collection_name
-            self.client = chromadb.PersistentClient(path=self.memory_path)
-            self.collection = None
 
-            # Proper spaCy model initialization
+            # --- Chroma client ---
+            self.client = chromadb.PersistentClient(path=memory_path)
+
+            # --- Collections ---
+            self.knowledge_collection = self._get_or_create_collection("knowledge_base")
+            self.preference_collection = self._get_or_create_collection("user_preferences")
+            self.conversation_collection = self._get_or_create_collection("conversation_memory")
+
+            # --- Models ---
             self.nlp = self._load_spacy_model()
             self.model = SentenceTransformer("all-MiniLM-L6-v2")
-            self.sentence_chunks: List[str] = []
 
-            #Load and prepare vector database
-            chunks = self.load_and_chunk_documents()
-            self.setup_vector_db(chunks)
+            # --- Seed knowledge ---
+            self._ingest_seed_notes()
+
             duration = (time.time() - start) * 1000
             agent_latency.record(duration, {"component": "rag", "stage": "init"})
             agent_invocations.add(1, {"component": "rag"})
+            logger.info("✅ RAGSystem initialized successfully")
 
-            span.set_attribute("rag.chunks.total", len(chunks))
-            logger.info("✅ RAGSystem initialized successfully.")
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def _get_or_create_collection(self, name: str):
+        try:
+            return self.client.create_collection(name=name, metadata={"hnsw:space": "cosine"})
+        except Exception:
+            logger.info(f"Using existing collection: {name}")
+            return self.client.get_collection(name)
 
     def _load_spacy_model(self):
-        """Load spaCy model or fallback gracefully."""
         try:
-            nlp = spacy.load("en_core_web_sm")
-            logger.info("spaCy model loaded successfully.")
-            return nlp
+            return spacy.load("en_core_web_sm")
         except OSError:
-            logger.warning("⚠️ spaCy model not found. Using basic chunking instead.")
+            logger.warning("spaCy model not found, sentence splitting disabled")
             return None
 
-    def load_and_chunk_documents(self) -> List[str]:
-        """Read notes and create sentence-aware text chunks."""
-        docs, doc_paths = read_notes()
+    # ------------------------------------------------------------------
+    # Seed knowledge ingestion
+    # ------------------------------------------------------------------
+    def _ingest_seed_notes(self):
+        if self.knowledge_collection.count() > 0:
+            logger.info(f"Knowledge base already populated ({self.knowledge_collection.count()} chunks)")
+            return
+
+        docs, paths = read_notes()
         if not docs:
-            logger.warning("No documents found for ingestion.")
-            return []
+            logger.warning("No seed documents found")
+            return
 
-        if self.nlp:
-            sentence_splitter = SpacyTextSplitter(chunk_size=400, chunk_overlap=50)
-            sentence_chunks = []
-            for i, doc in enumerate(docs):
-                chunks = sentence_splitter.split_text(doc)
-                sentence_chunks.extend(chunks)
-                logger.info(f"{len(chunks)} chunks created from {doc_paths[i]}")
-            logger.info(f"✅ Created {len(sentence_chunks)} total chunks.")
-        else:
-            logger.warning("spaCy unavailable – using full documents as chunks.")
-            sentence_chunks = docs  
+        splitter = SpacyTextSplitter(chunk_size=400, chunk_overlap=50) if self.nlp else None
 
-        self.sentence_chunks = sentence_chunks
-        return sentence_chunks
+        all_chunks, all_metadata = [], []
+        for doc, path in zip(docs, paths):
+            chunks = splitter.split_text(doc) if splitter else [doc]
+            domain = self._infer_domain(path)
+            all_chunks.extend(chunks)
+            all_metadata.extend([{"source": "seed", "domain": domain, "path": path} for _ in chunks])
+            logger.info(f"{len(chunks)} chunks created from {path}")
 
-    def setup_vector_db(self, chunks: List[str] = None):
-        """Initialize or update the vector database collection."""
-        if not chunks:
-            logger.warning("No chunks provided for vector DB setup.")
-            return None
+        embeddings = self.model.encode(all_chunks).tolist()
+        ids = [str(uuid.uuid4()) for _ in all_chunks]
 
-        try:
-            collection = self.client.create_collection(
-                name=self.collection_name,
-                metadata={"hnsw:space": "cosine"}
-            )
-            logger.info(f"Created new Chroma collection: {self.collection_name}")
-        except Exception:
-            collection = self.client.get_collection(self.collection_name)
-            logger.info(f"Using existing Chroma collection: {self.collection_name}")
+        self.knowledge_collection.add(ids=ids, documents=all_chunks, embeddings=embeddings, metadatas=all_metadata)
+        logger.info(f"✅ Stored {len(all_chunks)} knowledge chunks")
 
-        # Skip adding if already populated
-        if collection.count() > 0:
-            logger.info(f"Collection already contains {collection.count()} chunks.")
-            self.collection = collection
-            return collection
+    def _infer_domain(self, path: str) -> str:
+        p = path.lower()
+        if "movie" in p: return "movies"
+        if "recipe" in p: return "recipes"
+        if "plant" in p: return "plants"
+        return "general"
 
-        # Otherwise, add fresh data
-        ids = [str(uuid.uuid4()) for _ in chunks]
-        metadatas = [{"source": "local_notes"} for _ in chunks]
-        embeddings = [self.model.encode(chunk).tolist() for chunk in chunks]
-
-        collection.add(ids=ids, documents=chunks, embeddings=embeddings, metadatas=metadatas)
-        logger.info(f"Stored {len(chunks)} chunks in vector database.")
-        self.collection = collection
-        return collection
-
-    def process_user_query(self, query: str):
-        """Convert user query into an embedding."""
-        cleaned_query = query.lower().strip()
-        query_embedding = self.model.encode([cleaned_query])[0]
-        logger.debug(f"Generated embedding for query: '{query}'")
-        return query_embedding
-
-    def search_vector_database(self, query_embedding, top_k: int = 5) -> List[Dict]:
-        """Search top-k most relevant documents from the vector DB."""
-        with tracer.start_as_current_span("rag.search") as span:
-            span.set_attribute("top_k", top_k)
-            if self.collection is None:
-                raise RuntimeError("Vector collection not initialized. Run setup_vector_db() first.")
-            span.set_attribute("collection.ready", True)
-
-            start = time.time()
-            results = self.collection.query(
-                query_embeddings=[query_embedding.tolist()],
-                n_results=top_k
-            )
-            duration = (time.time() - start) * 1000
+    # ------------------------------------------------------------------
+    # Knowledge retrieval
+    # ------------------------------------------------------------------
+    def retrieve_knowledge(self, query: str, top_k: int = 5) -> List[Dict]:
+        with tracer.start_as_current_span("rag.search"):
+            embedding = self.model.encode([query])[0].tolist()
+            results = self.knowledge_collection.query(query_embeddings=[embedding], n_results=top_k)
 
             hits = len(results["documents"][0])
-            span.set_attribute("rag.hits", hits)
-
             rag_hits.add(hits)
-            agent_latency.record(duration, {"component": "rag", "stage": "search"})
 
-            search_results = []
-            for i, (doc_id, distance, content, metadata) in enumerate(zip(
-                results["ids"][0],
-                results["distances"][0],
-                results["documents"][0],
-                results["metadatas"][0]
-            )):
-                similarity = 1 - distance
-                search_results.append({
-                    "id": doc_id,
-                    "content": content,
-                    "metadata": metadata,
-                    "similarity": similarity
-                })
-                logger.debug(f"[{i+1}] Similarity: {similarity:.3f} | Content: {content[:100]}...")
+            docs = []
+            for doc, meta, dist in zip(results["documents"][0], results["metadatas"][0], results["distances"][0]):
+                docs.append({"content": doc, "metadata": meta, "similarity": 1 - dist})
+            return docs
 
-            return search_results
+    # ------------------------------------------------------------------
+    # Preferences
+    # ------------------------------------------------------------------
+    def store_preference(self, text: str):
+        embedding = self.model.encode([text])[0].tolist()
+        self.preference_collection.add(
+            ids=[str(uuid.uuid4())],
+            documents=[text],
+            embeddings=[embedding],
+            metadatas=[{"type": "preference", "source": "user"}],
+        )
 
-    # --------------------------------------------------------------------------------
-    # 6️⃣ Context augmentation
-    # --------------------------------------------------------------------------------
-    def augment_prompt_with_context(self, query: str, search_results: List[Dict]) -> str:
-        """Combine retrieved results and query into an augmented prompt."""
-        if not search_results:
-            return f"User asked: {query}\n\nNo relevant context found in notes."
-
-        context_parts = [
-            f"Source {i+1}: {res['metadata'].get('source', 'Unknown Source')}\n{res['content']}"
-            for i, res in enumerate(search_results)
-        ]
-        context = "\n\n".join(context_parts)
-
-        augmented_prompt = f"""
-        Based on the following context, answer the user's question.
-
-        CONTEXT:
-        {context}
-
-        QUESTION: {query}
-
-        Please provide a clear, accurate, and concise answer with source references.
-        """
-        logger.debug(f"Augmented prompt created for query: '{query}'")
-        return augmented_prompt
-
-    # --------------------------------------------------------------------------------
-    # 7️⃣ Add conversation memory to DB
-    # --------------------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Conversation memory
+    # ------------------------------------------------------------------
     def add_to_vector_db(self, context: Dict):
-        """Add a new conversation or note context into the vector DB."""
+        """Add conversation context to conversation_collection safely."""
         text = context.get("content") or ""
         if not text.strip():
             logger.warning("⚠️ No valid context text found, skipping addition.")
@@ -187,28 +129,23 @@ class RAGSystem:
 
         logger.info(f"Adding conversation context: {text[:100]}...")
 
-        # Split into chunks
+        # Chunk text
+        chunks = [text]
         if self.nlp:
-            sentence_splitter = SpacyTextSplitter(chunk_size=400, chunk_overlap=50)
-            chunks = sentence_splitter.split_text(text)
+            splitter = SpacyTextSplitter(chunk_size=400, chunk_overlap=50)
+            chunks = splitter.split_text(text)
             logger.info(f"✅ Created {len(chunks)} chunks from conversation context.")
-        else:
-            chunks = [text]
 
-        # Embed and add
         embeddings = [self.model.encode(chunk).tolist() for chunk in chunks]
         ids = [str(uuid.uuid4()) for _ in chunks]
         metadatas = [{"source": "user_conversation"} for _ in chunks]
 
-        collection = self.client.get_collection(self.collection_name)
-        collection.add(ids=ids, documents=chunks, embeddings=embeddings, metadatas=metadatas)
+        self.conversation_collection.add(ids=ids, documents=chunks, embeddings=embeddings, metadatas=metadatas)
         logger.debug("🧩 Added conversation context to vector DB successfully.")
-    def run(self, query: str):
-        try:
-            query_embedding = self.process_user_query(query)
-            search_results = self.search_vector_database(query_embedding)
-            response = self.augment_prompt_with_context(query, search_results)
-            return {"response": response}
-        except Exception as e:
-            logger.error(f"Error in RAGSystem.run: {str(e)}")
-            return {"response": f"Error: {str(e)}"}
+
+    def store_conversation(self, text: str):
+        self.conversation_collection.add(
+            ids=[str(uuid.uuid4())],
+            documents=[text],
+            metadatas=[{"type": "conversation", "source": "user"}],
+        )
